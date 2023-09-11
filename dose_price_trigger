@@ -1,0 +1,48 @@
+CREATE OR REPLACE FUNCTION update_dose_price() RETURNS TRIGGER AS
+$$
+        DECLARE
+		dosis dose%ROWTYPE;
+                new_price REAL;
+                new_dose_price REAL;
+                max_date DATE;
+        BEGIN
+                IF((SELECT COUNT(*) FROM dose WHERE ingredient_id = NEW.ingredient_id) = 0) THEN
+			RAISE NOTICE '[TRIGGER trigger_update_dose_price] -- No ingredient with id % in table dose. No updates performed on dose prices', NEW.ingredient_id;
+		ELSE
+
+			SELECT MAX(date_purchase) INTO max_date
+                	FROM prices
+                	where ingredient_id = NEW.ingredient_id;
+
+                	SELECT ingredient_price INTO new_price
+                	FROM prices
+                	WHERE ingredient_id = NEW.ingredient_id AND date_purchase = max_date;
+
+			FOR dosis IN
+				SELECT *
+				FROM dose
+				WHERE ingredient_id = NEW.ingredient_id
+			LOOP
+	
+                		new_dose_price := new_price / dosis.dose;
+		
+                		UPDATE dose
+                		SET dose_price = new_dose_price
+                		WHERE ingredient_id = NEW.ingredient_id and recipe_id = dosis.recipe_id;
+				
+				RAISE NOTICE '[TRIGGER trigger_update_dose_price] -- Ingredient % updated for recipe %. New dose price = %', dosis.ingredient_id, dosis.recipe_id, new_dose_price;
+	
+			END LOOP;
+
+		END IF;
+
+                RETURN NULL;
+        END;
+$$
+LANGUAGE plpgsql;
+
+
+
+CREATE TRIGGER trigger_update_dose_price AFTER INSERT ON prices
+FOR EACH ROW
+EXECUTE PROCEDURE update_dose_price();

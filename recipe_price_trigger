@@ -1,0 +1,46 @@
+el trigger de update_dose_price cambia precios en la tabla dose
+
+entonces, crear un trigger after update on each row:
+- ocurre un update on row from dose
+- ese row de dose, que tiene asignada ya un recipe_id -> obtenemos receta con NEW.recipe_id
+- con ese recipe_id, hacemos un loop -> para cada dose%ROWTYPE WHERE recipe_id = NEW.recipe_id
+- recalculamos el precio de ese recipe_id pulling all the dose_prices de each row with that recipe_id
+
+CREATE OR REPLACE FUNCTION update_recipe_price() RETURNS TRIGGER AS
+$$
+  DECLARE
+    receta_id INT := NEW.recipe_id;
+    new_recipe_price REAL := 0.00;
+    dose_tuple DOSE%ROWTYPE;
+
+  BEGIN
+    FOR dose_tuple IN
+        SELECT *
+        FROM dose
+        WHERE recipe_id = receta_id
+    LOOP
+        
+        RAISE NOTICE 'Loopeamos ingrediente %. Con precio %. new_recipe_price es %', dose_tuple.ingredient_id, dose_tuple.dose_price, new_recipe_price;
+        
+        IF (dose_tuple.dose_price IS NOT NULL) THEN
+          new_recipe_price := new_recipe_price + dose_tuple.dose_price;
+        END IF;
+
+    END LOOP;
+
+    RAISE NOTICE '[TRIGGER trigger_update_recipe_price] -- Ingredient % present in recipe % -> New price of recipe is %', NEW.ingredient_id, NEW.recipe_id, new_recipe_price;
+    
+    UPDATE recipe
+    SET recipe_price = new_recipe_price
+    WHERE recipe_id = receta_id;
+
+    RETURN NULL;
+
+  END;
+$$
+LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trigger_update_recipe_price AFTER UPDATE OR INSERT ON dose
+FOR EACH ROW
+EXECUTE PROCEDURE update_recipe_price();

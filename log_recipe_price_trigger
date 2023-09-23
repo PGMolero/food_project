@@ -1,0 +1,37 @@
+CREATE OR REPLACE FUNCTION update_log_table() RETURNS TRIGGER AS
+$$                             
+        DECLARE
+                old_price REAL := OLD.recipe_price;
+                new_price REAL := NEW.recipe_price;
+                dia DATE := NULL;
+        BEGIN
+
+                SELECT MAX(trp.day) INTO dia
+                FROM trend_recipe_prices trp
+                WHERE trp.recipe_id = NEW.recipe_id;
+
+                IF(dia <> CURRENT_DATE OR dia IS NULL) THEN
+
+                        INSERT INTO trend_recipe_prices VALUES
+                        (CURRENT_DATE, NEW.recipe_id, old_price, new_price);
+
+                        RAISE NOTICE '[TRIGGER trigger_update_log_table] --- New entry for recipe % -> Price goes from % to %', NEW.recipe_name, old_price, new_price;
+                ELSE
+                        UPDATE trend_recipe_prices
+                        SET new_price = NEW.recipe_price
+                        WHERE recipe_id = NEW.recipe_id;
+
+                        RAISE NOTICE '[TRIGGER trigger_update_log_table] --- Updated entry for recipe % -> Price goes from % to %', NEW.recipe_name, old_price, new_price;
+
+                END IF;
+
+                RETURN NULL;
+        END;
+$$
+LANGUAGE plpgsql;
+
+
+
+CREATE TRIGGER trigger_update_log_table AFTER UPDATE ON recipe
+FOR EACH ROW
+EXECUTE PROCEDURE update_log_table();

@@ -24,7 +24,7 @@ $$
 				WHERE ingredient_id = NEW.ingredient_id
 			LOOP
 	
-                		new_dose_price := new_price / dosis.dose;
+                		new_dose_price := new_price * dosis.dose;
 		
                 		UPDATE dose
                 		SET dose_price = new_dose_price

@@ -19,9 +19,7 @@ $$
         FROM dose
         WHERE recipe_id = receta_id
     LOOP
-        
-        RAISE NOTICE 'Loopeamos ingrediente %. Con precio %. new_recipe_price es %', dose_tuple.ingredient_id, dose_tuple.dose_price, new_recipe_price;
-        
+         
         IF (dose_tuple.dose_price IS NOT NULL) THEN
           new_recipe_price := new_recipe_price + dose_tuple.dose_price;
         END IF;
